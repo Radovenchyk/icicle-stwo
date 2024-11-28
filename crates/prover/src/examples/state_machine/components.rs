@@ -7,6 +7,7 @@ use crate::constraint_framework::{
 };
 use crate::core::air::{Component, ComponentProver};
 use crate::core::backend::simd::SimdBackend;
+use crate::core::backend::CpuBackend;
 use crate::core::channel::Channel;
 use crate::core::fields::m31::M31;
 use crate::core::fields::qm31::{SecureField, QM31};
@@ -120,6 +121,13 @@ impl StateMachineComponents {
         vec![
             &self.component0 as &dyn ComponentProver<SimdBackend>,
             &self.component1 as &dyn ComponentProver<SimdBackend>,
+        ]
+    }
+
+    pub fn component_provers_cpu(&self) -> Vec<&dyn ComponentProver<CpuBackend>> {
+        vec![
+            &self.component0 as &dyn ComponentProver<CpuBackend>,
+            &self.component1 as &dyn ComponentProver<CpuBackend>,
         ]
     }
 }

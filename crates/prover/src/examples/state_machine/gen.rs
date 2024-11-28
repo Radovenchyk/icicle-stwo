@@ -8,6 +8,7 @@ use crate::core::backend::simd::column::BaseColumn;
 use crate::core::backend::simd::m31::{PackedM31, LOG_N_LANES};
 use crate::core::backend::simd::qm31::PackedQM31;
 use crate::core::backend::simd::SimdBackend;
+use crate::core::backend::CpuBackend;
 use crate::core::fields::m31::M31;
 use crate::core::fields::qm31::QM31;
 use crate::core::poly::circle::{CanonicCoset, CircleEvaluation};
@@ -46,6 +47,39 @@ pub fn gen_trace(
             CircleEvaluation::<SimdBackend, _, BitReversedOrder>::new(
                 domain,
                 BaseColumn::from_iter(col),
+            )
+        })
+        .collect_vec()
+}
+
+pub fn gen_trace_cpu(
+    log_size: u32,
+    initial_state: State,
+    inc_index: usize,
+) -> ColumnVec<CircleEvaluation<CpuBackend, M31, BitReversedOrder>> {
+    let domain = CanonicCoset::new(log_size).circle_domain();
+    let mut trace = (0..STATE_SIZE)
+        .map(|_| vec![M31::zero(); 1 << log_size])
+        .collect_vec();
+    let mut curr_state = initial_state;
+
+    // Add the states in bit reversed circle domain order.
+    for i in 0..1 << log_size {
+        for j in 0..STATE_SIZE {
+            let bit_rev_index =
+                bit_reverse_index(coset_index_to_circle_domain_index(i, log_size), log_size);
+            trace[j][bit_rev_index] = curr_state[j];
+        }
+        // Increment the state to the next state row.
+        curr_state[inc_index] += M31::one();
+    }
+
+    trace
+        .into_iter()
+        .map(|col| {
+            CircleEvaluation::<CpuBackend, _, BitReversedOrder>::new(
+                domain,
+                BaseColumn::from_iter(col).into_cpu_vec(),
             )
         })
         .collect_vec()
