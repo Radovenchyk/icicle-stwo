@@ -1,5 +1,9 @@
+use std::mem::transmute;
+
 use crate::constraint_framework::Relation;
-use crate::core::backend::CpuBackend;
+// use crate::core::backend::CpuBackend;
+use crate::core::backend::icicle::IcicleBackend;
+use crate::core::poly::BitReversedOrder;
 pub mod components;
 pub mod gen;
 
@@ -179,7 +183,6 @@ pub fn verify_state_machine(
     )
 }
 
-
 #[allow(unused)]
 pub fn prove_state_machine_cpu(
     log_n_rows: u32,
@@ -211,7 +214,7 @@ pub fn prove_state_machine_cpu(
     // Setup protocol.
     let mut commitment_scheme =
         CommitmentSchemeProver::<_, Blake2sMerkleChannel>::new(config, &twiddles);
-    let twiddles_cpu = CpuBackend::precompute_twiddles(
+    let twiddles_cpu = IcicleBackend::precompute_twiddles(
         CanonicCoset::new(log_n_rows + config.fri_config.log_blowup_factor + 1)
             .circle_domain()
             .half_coset,
@@ -248,9 +251,28 @@ pub fn prove_state_machine_cpu(
     // let mut tree_builder = commitment_scheme.tree_builder();
     // tree_builder.extend_evals(chain![trace_op0.clone(), trace_op1.clone()]);
     // tree_builder.commit(channel);
-    
+    use crate::core::poly::circle::CircleEvaluation;
     let mut tree_builder = commitment_scheme_cpu.tree_builder();
-    tree_builder.extend_evals(chain![trace_op0.clone().into_iter().map(|c| c.to_cpu()).collect_vec(), trace_op1.clone().into_iter().map(|c| c.to_cpu()).collect_vec()]);
+    tree_builder.extend_evals(chain![
+        unsafe {
+            transmute::<_, Vec<CircleEvaluation<IcicleBackend, M31, BitReversedOrder>>>(
+                trace_op0
+                    .clone()
+                    .into_iter()
+                    .map(|c| c.to_cpu())
+                    .collect_vec(),
+            )
+        },
+        unsafe {
+            transmute::<_, Vec<CircleEvaluation<IcicleBackend, M31, BitReversedOrder>>>(
+                trace_op1
+                    .clone()
+                    .into_iter()
+                    .map(|c| c.to_cpu())
+                    .collect_vec(),
+            )
+        }
+    ]);
     tree_builder.commit(channel);
 
     // Draw lookup element.
@@ -269,11 +291,31 @@ pub fn prove_state_machine_cpu(
     stmt1.mix_into(channel);
 
     // let mut tree_builder = commitment_scheme.tree_builder();
-    // tree_builder.extend_evals(chain![interaction_trace_op0.clone(), interaction_trace_op1.clone()].collect_vec());
-    // tree_builder.commit(channel);
+    // tree_builder.extend_evals(chain![interaction_trace_op0.clone(),
+    // interaction_trace_op1.clone()].collect_vec()); tree_builder.commit(channel);
 
     let mut tree_builder = commitment_scheme_cpu.tree_builder();
-    tree_builder.extend_evals(chain![interaction_trace_op0.into_iter().map(|c| c.to_cpu()).collect_vec(), interaction_trace_op1.into_iter().map(|c| c.to_cpu()).collect_vec()].collect_vec());
+    tree_builder.extend_evals(
+        chain![
+            unsafe {
+                transmute::<_, Vec<CircleEvaluation<IcicleBackend, M31, BitReversedOrder>>>(
+                    interaction_trace_op0
+                        .into_iter()
+                        .map(|c| c.to_cpu())
+                        .collect_vec(),
+                )
+            },
+            unsafe {
+                transmute::<_, Vec<CircleEvaluation<IcicleBackend, M31, BitReversedOrder>>>(
+                    interaction_trace_op1
+                        .into_iter()
+                        .map(|c| c.to_cpu())
+                        .collect_vec(),
+                )
+            }
+        ]
+        .collect_vec(),
+    );
     tree_builder.commit(channel);
 
     // Prove constraints.
@@ -305,7 +347,12 @@ pub fn prove_state_machine_cpu(
         component0,
         component1,
     };
-    let stark_proof = prove(&components.component_provers_cpu(), channel, commitment_scheme_cpu).unwrap();
+    let stark_proof = prove(
+        &components.component_provers_icicle(),
+        channel,
+        commitment_scheme_cpu,
+    )
+    .unwrap();
     let proof = StateMachineProof {
         public_input: [initial_state, final_state],
         stmt0,

@@ -6,6 +6,7 @@ use crate::constraint_framework::{
     PREPROCESSED_TRACE_IDX,
 };
 use crate::core::air::{Component, ComponentProver};
+use crate::core::backend::icicle::IcicleBackend;
 use crate::core::backend::simd::SimdBackend;
 use crate::core::backend::CpuBackend;
 use crate::core::channel::Channel;
@@ -128,6 +129,13 @@ impl StateMachineComponents {
         vec![
             &self.component0 as &dyn ComponentProver<CpuBackend>,
             &self.component1 as &dyn ComponentProver<CpuBackend>,
+        ]
+    }
+
+    pub fn component_provers_icicle(&self) -> Vec<&dyn ComponentProver<IcicleBackend>> {
+        vec![
+            &self.component0 as &dyn ComponentProver<IcicleBackend>,
+            &self.component1 as &dyn ComponentProver<IcicleBackend>,
         ]
     }
 }
