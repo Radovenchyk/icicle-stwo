@@ -129,23 +129,6 @@ impl PolyOps for CpuBackend {
         domain: CircleDomain,
         twiddles: &TwiddleTree<Self>,
     ) -> CircleEvaluation<Self, BaseField, BitReversedOrder> {
-        #[cfg(feature = "icicle")]
-        {
-            if domain.log_size() > 3 && domain.log_size() != 7 {
-                return unsafe {
-                    use crate::core::backend::icicle::IcicleBackend;
-
-                    unsafe {
-                        transmute(IcicleBackend::evaluate(
-                            transmute(poly),
-                            transmute(domain),
-                            transmute(twiddles),
-                        ))
-                    }
-                };
-            }
-        }
-
         assert!(domain.half_coset.is_doubling_of(twiddles.root_coset));
 
         let mut values = poly.extend(domain.log_size()).coeffs;

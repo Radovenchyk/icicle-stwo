@@ -152,11 +152,6 @@ impl AccumulationOps for IcicleBackend {
             SecureColumnByCoords::convert_from_icicle(column, d_a_slice);
         }
     }
-
-    // fn confirm(column: &mut SecureColumnByCoords<Self>) {
-    //     column.convert_from_icicle(); // TODO: won't be necessary here on each call, only send
-    // back                                   // to stwo core
-    // }
 }
 
 // stwo/crates/prover/src/core/backend/cpu/blake2s.rs
@@ -253,7 +248,6 @@ impl PolyOps for IcicleBackend {
         eval: CircleEvaluation<Self, BaseField, BitReversedOrder>,
         itwiddles: &TwiddleTree<Self>,
     ) -> CirclePoly<Self> {
-        // todo!()
         if eval.domain.log_size() <= 3 || eval.domain.log_size() == 7 {
             // TODO: as property .is_dcct_available etc...
             return unsafe {
@@ -286,6 +280,7 @@ impl PolyOps for IcicleBackend {
     }
 
     fn eval_at_point(poly: &CirclePoly<Self>, point: CirclePoint<SecureField>) -> SecureField {
+        // todo!()
         unsafe { CpuBackend::eval_at_point(transmute(poly), point) }
     }
 
@@ -299,7 +294,6 @@ impl PolyOps for IcicleBackend {
         domain: CircleDomain,
         twiddles: &TwiddleTree<Self>,
     ) -> CircleEvaluation<Self, BaseField, BitReversedOrder> {
-        // todo!()
         if domain.log_size() <= 3 || domain.log_size() == 7 {
             return unsafe {
                 transmute(CpuBackend::evaluate(
@@ -1010,17 +1004,7 @@ mod tests {
             })
             .collect_vec();
 
-        // for col in &cols {
-        //     println!("Col: {}", col.len());
-        // }
-
         let merkle = MerkleProver::<CpuBackend, Blake2sMerkleHasher>::commit(cols.iter().collect_vec());
-        // for layer in &merkle.layers {
-        //     println!("LAYER");
-        //     for h in layer {
-        //         println!("CPU {:?}", h);
-        //     }
-        // }
 
         let icicle_merkle = MerkleProver::<IcicleBackend, Blake2sMerkleHasher>::commit(cols.iter().collect_vec());
 
@@ -1149,12 +1133,6 @@ mod tests {
                 &SimdBackend::precompute_twiddles(line_domain.coset()),
             );
 
-            // assert_eq!(
-            //     cpu_fold.values.to_vec(),
-            //     simd_fold.values.to_vec(),
-            //     "failed to fold log2: {}",
-            //     log_size
-            // );
             if icicle_fold.values.to_vec() != simd_fold.values.to_vec() {
                 println!("failed to fold log2: {}", log_size);
                 is_correct = false;
