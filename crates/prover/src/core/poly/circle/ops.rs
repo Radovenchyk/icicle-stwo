@@ -9,12 +9,13 @@ use crate::core::fields::FieldOps;
 use crate::core::poly::twiddles::TwiddleTree;
 use crate::core::poly::BitReversedOrder;
 use crate::core::ColumnVec;
+use std::fmt::Debug;
 
 /// Operations on BaseField polynomials.
-pub trait PolyOps: FieldOps<BaseField> + Sized {
+pub trait PolyOps: FieldOps<BaseField> + Sized + Debug {
     // TODO(alont): Use a column instead of this type.
     /// The type for precomputed twiddles.
-    type Twiddles;
+    type Twiddles: Debug;
 
     /// Creates a [CircleEvaluation] from values ordered according to [CanonicCoset].
     /// Used by the [`CircleEvaluation::new_canonical_ordered()`] function.

@@ -22,6 +22,7 @@ use crate::core::vcs::ops::MerkleHasher;
 use crate::core::vcs::prover::{MerkleDecommitment, MerkleProver};
 
 /// The prover side of a FRI polynomial commitment scheme. See [super].
+#[derive(Debug)]
 pub struct CommitmentSchemeProver<'a, B: BackendForChannel<MC>, MC: MerkleChannel> {
     pub trees: TreeVec<CommitmentTreeProver<B, MC>>,
     pub config: PcsConfig,
@@ -157,6 +158,7 @@ pub struct CommitmentSchemeProof<H: MerkleHasher> {
     pub fri_proof: FriProof<H>,
 }
 
+#[derive(Debug)]
 pub struct TreeBuilder<'a, 'b, B: BackendForChannel<MC>, MC: MerkleChannel> {
     tree_index: usize,
     commitment_scheme: &'a mut CommitmentSchemeProver<'b, B, MC>,
@@ -196,6 +198,7 @@ impl<'a, 'b, B: BackendForChannel<MC>, MC: MerkleChannel> TreeBuilder<'a, 'b, B,
 
 /// Prover data for a single commitment tree in a commitment scheme. The commitment scheme allows to
 /// commit on a set of polynomials at a time. This corresponds to such a set.
+#[derive(Debug)]
 pub struct CommitmentTreeProver<B: BackendForChannel<MC>, MC: MerkleChannel> {
     pub polynomials: ColumnVec<CirclePoly<B>>,
     pub evaluations: ColumnVec<CircleEvaluation<B, BaseField, BitReversedOrder>>,

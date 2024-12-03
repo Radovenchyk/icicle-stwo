@@ -29,6 +29,7 @@ pub type LogupSums = (SecureField, Option<ClaimedPrefixSum>);
 
 /// Evaluates constraints for batched logups.
 /// These constraint enforce the sum of multiplicity_i / (z + sum_j alpha^j * x_j) = claimed_sum.
+#[derive(Debug)]
 pub struct LogupAtRow<E: EvalAtRow> {
     /// The index of the interaction used for the cumulative sum columns.
     pub interaction: usize,

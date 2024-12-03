@@ -11,6 +11,7 @@ use crate::core::fields::m31::BaseField;
 use crate::core::utils::PeekableExt;
 use crate::core::ColumnVec;
 
+#[derive(Debug)]
 pub struct MerkleProver<B: MerkleOps<H>, H: MerkleHasher> {
     /// Layers of the Merkle tree.
     /// The first layer is the root layer.

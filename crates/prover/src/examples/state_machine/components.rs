@@ -28,7 +28,7 @@ pub type StateMachineOp1Component = FrameworkComponent<StateTransitionEval<1>>;
 
 /// State machine with state of size `STATE_SIZE`.
 /// Transition `COORDINATE` of state increments the state by 1 at that offset.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StateTransitionEval<const COORDINATE: usize> {
     pub log_n_rows: u32,
     pub lookup_elements: StateMachineElements,
@@ -59,6 +59,7 @@ impl<const COORDINATE: usize> FrameworkEval for StateTransitionEval<COORDINATE> 
     }
 }
 
+#[derive(Debug)]
 pub struct StateMachineStatement0 {
     pub n: u32,
     pub m: u32,
@@ -84,7 +85,7 @@ impl StateMachineStatement0 {
         channel.mix_u64(self.m as u64);
     }
 }
-
+#[derive(Debug)]
 pub struct StateMachineStatement1 {
     pub x_axis_claimed_sum: SecureField,
     pub y_axis_claimed_sum: SecureField,
@@ -105,6 +106,7 @@ fn state_transition_info<const INDEX: usize>() -> InfoEvaluator {
     component.evaluate(InfoEvaluator::empty())
 }
 
+#[derive(Debug)]
 pub struct StateMachineComponents {
     pub component0: StateMachineOp0Component,
     pub component1: StateMachineOp1Component,
@@ -140,6 +142,7 @@ impl StateMachineComponents {
     }
 }
 
+#[derive(Debug)]
 pub struct StateMachineProof<H: MerkleHasher> {
     pub public_input: [State; 2], // Initial and final state.
     pub stmt0: StateMachineStatement0,
