@@ -58,7 +58,7 @@ pub struct TraceLocationAllocator {
 }
 
 impl TraceLocationAllocator {
-    pub fn next_for_structure<T>(
+    pub fn next_for_structure<T: PartialEq>(
         &mut self,
         structure: &TreeVec<ColumnVec<T>>,
     ) -> TreeVec<TreeSubspan> {

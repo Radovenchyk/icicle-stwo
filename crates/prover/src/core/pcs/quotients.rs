@@ -67,6 +67,7 @@ impl ColumnSampleBatch {
     }
 }
 
+#[derive(PartialEq)]
 pub struct PointSample {
     pub point: CirclePoint<SecureField>,
     pub value: SecureField,

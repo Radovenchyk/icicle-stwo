@@ -8,21 +8,21 @@ use super::TreeSubspan;
 use crate::core::ColumnVec;
 
 /// A container that holds an element for each commitment tree.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TreeVec<T>(pub Vec<T>);
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TreeVec<T:PartialEq>(pub Vec<T>);
 
-impl<T> TreeVec<T> {
+impl<T: PartialEq> TreeVec<T> {
     pub fn new(vec: Vec<T>) -> TreeVec<T> {
         TreeVec(vec)
     }
-    pub fn map<U, F: Fn(T) -> U>(self, f: F) -> TreeVec<U> {
+    pub fn map<U: PartialEq, F: Fn(T) -> U>(self, f: F) -> TreeVec<U> {
         TreeVec(self.0.into_iter().map(f).collect())
     }
-    pub fn zip<U>(self, other: impl Into<TreeVec<U>>) -> TreeVec<(T, U)> {
+    pub fn zip<U:PartialEq>(self, other: impl Into<TreeVec<U>>) -> TreeVec<(T, U)> {
         let other = other.into();
         TreeVec(self.0.into_iter().zip(other.0).collect())
     }
-    pub fn zip_eq<U>(self, other: impl Into<TreeVec<U>>) -> TreeVec<(T, U)> {
+    pub fn zip_eq<U:PartialEq>(self, other: impl Into<TreeVec<U>>) -> TreeVec<(T, U)> {
         let other = other.into();
         TreeVec(zip_eq(self.0, other.0).collect())
     }
@@ -35,33 +35,33 @@ impl<T> TreeVec<T> {
 }
 
 /// Converts `&TreeVec<T>` to `TreeVec<&T>`.
-impl<'a, T> From<&'a TreeVec<T>> for TreeVec<&'a T> {
+impl<'a, T: PartialEq> From<&'a TreeVec<T>> for TreeVec<&'a T> {
     fn from(val: &'a TreeVec<T>) -> Self {
         val.as_ref()
     }
 }
 
-impl<T> Deref for TreeVec<T> {
+impl<T:PartialEq> Deref for TreeVec<T> {
     type Target = Vec<T>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<T> DerefMut for TreeVec<T> {
+impl<T:PartialEq> DerefMut for TreeVec<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<T> Default for TreeVec<T> {
+impl<T:PartialEq> Default for TreeVec<T> {
     fn default() -> Self {
         TreeVec(Vec::new())
     }
 }
 
-impl<T> TreeVec<ColumnVec<T>> {
-    pub fn map_cols<U, F: FnMut(T) -> U>(self, mut f: F) -> TreeVec<ColumnVec<U>> {
+impl<T:PartialEq> TreeVec<ColumnVec<T>> {
+    pub fn map_cols<U:PartialEq, F: FnMut(T) -> U>(self, mut f: F) -> TreeVec<ColumnVec<U>> {
         TreeVec(
             self.0
                 .into_iter()
@@ -73,7 +73,7 @@ impl<T> TreeVec<ColumnVec<T>> {
     /// Zips two [`TreeVec<ColumVec<T>>`] with the same structure (number of columns in each tree).
     /// The resulting [`TreeVec<ColumVec<T>>`] has the same structure, with each value being a tuple
     /// of the corresponding values from the input [`TreeVec<ColumVec<T>>`].
-    pub fn zip_cols<U>(
+    pub fn zip_cols<U:PartialEq>(
         self,
         other: impl Into<TreeVec<ColumnVec<U>>>,
     ) -> TreeVec<ColumnVec<(T, U)>> {
@@ -143,8 +143,8 @@ impl<T> TreeVec<ColumnVec<T>> {
     }
 }
 
-impl<T> TreeVec<&ColumnVec<T>> {
-    pub fn map_cols<U, F: FnMut(&T) -> U>(self, mut f: F) -> TreeVec<ColumnVec<U>> {
+impl<T:PartialEq> TreeVec<&ColumnVec<T>> {
+    pub fn map_cols<U:PartialEq, F: FnMut(&T) -> U>(self, mut f: F) -> TreeVec<ColumnVec<U>> {
         TreeVec(
             self.0
                 .into_iter()
@@ -154,13 +154,13 @@ impl<T> TreeVec<&ColumnVec<T>> {
     }
 }
 
-impl<'a, T> From<&'a TreeVec<ColumnVec<T>>> for TreeVec<ColumnVec<&'a T>> {
+impl<'a, T:PartialEq> From<&'a TreeVec<ColumnVec<T>>> for TreeVec<ColumnVec<&'a T>> {
     fn from(val: &'a TreeVec<ColumnVec<T>>) -> Self {
         val.as_cols_ref()
     }
 }
 
-impl<T> TreeVec<ColumnVec<Vec<T>>> {
+impl<T:PartialEq> TreeVec<ColumnVec<Vec<T>>> {
     /// Flattens a [`TreeVec<ColumVec<T>>`] of [Vec]s into a single [Vec] with all the elements
     /// combined.
     pub fn flatten_cols(self) -> Vec<T> {

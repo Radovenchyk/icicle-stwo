@@ -45,7 +45,7 @@ pub trait Channel: Default + Clone {
     fn draw_random_bytes(&mut self) -> Vec<u8>;
 }
 
-pub trait MerkleChannel: Default {
+pub trait MerkleChannel: Default + PartialEq {
     type C: Channel;
     type H: MerkleHasher;
     fn mix_root(channel: &mut Self::C, root: <Self::H as MerkleHasher>::Hash);

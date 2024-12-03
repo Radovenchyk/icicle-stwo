@@ -5,7 +5,7 @@ use crate::core::circle::Coset;
 /// A coset tower is every repeated doubling of a `root_coset`.
 /// The largest CircleDomain that can be ffted using these twiddles is one with `root_coset` as
 /// its `half_coset`.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct TwiddleTree<B: PolyOps> {
     pub root_coset: Coset,
     // TODO(shahars): Represent a slice, and grabbing, in a generic way

@@ -21,7 +21,7 @@ use crate::core::vcs::blake2_merkle::Blake2sMerkleChannel;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::core::vcs::poseidon252_merkle::Poseidon252MerkleChannel;
 
-#[derive(Copy, Clone, Debug, Deserialize, Serialize, Default)]
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, Default, PartialEq)]
 pub struct CpuBackend;
 
 impl Backend for CpuBackend {}
@@ -29,7 +29,7 @@ impl BackendForChannel<Blake2sMerkleChannel> for CpuBackend {}
 #[cfg(not(target_arch = "wasm32"))]
 impl BackendForChannel<Poseidon252MerkleChannel> for CpuBackend {}
 
-impl<T: Debug + Clone + Default> ColumnOps<T> for CpuBackend {
+impl<T: Debug + Clone + Default + PartialEq> ColumnOps<T> for CpuBackend {
     type Column = Vec<T>;
 
     fn bit_reverse_column(column: &mut Self::Column) {
@@ -45,7 +45,7 @@ impl<F: Field> FieldOps<F> for CpuBackend {
     }
 }
 
-impl<T: Debug + Clone + Default> Column<T> for Vec<T> {
+impl<T: Debug + Clone + Default + PartialEq> Column<T> for Vec<T> {
     fn zeros(len: usize) -> Self {
         vec![T::default(); len]
     }

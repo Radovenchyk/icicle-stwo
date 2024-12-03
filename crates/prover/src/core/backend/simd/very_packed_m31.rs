@@ -14,7 +14,7 @@ use crate::core::fields::FieldExpOps;
 pub const LOG_N_VERY_PACKED_ELEMS: u32 = 1;
 pub const N_VERY_PACKED_ELEMS: usize = 1 << LOG_N_VERY_PACKED_ELEMS;
 
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, PartialEq)]
 #[repr(transparent)]
 pub struct Vectorized<A: Copy, const N: usize>(pub [A; N]);
 

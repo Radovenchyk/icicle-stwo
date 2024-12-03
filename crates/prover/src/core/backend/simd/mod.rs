@@ -26,7 +26,7 @@ pub mod quotients;
 mod utils;
 pub mod very_packed_m31;
 
-#[derive(Copy, Clone, Debug, Deserialize, Serialize, Default)]
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, Default, PartialEq)]
 pub struct SimdBackend;
 
 impl Backend for SimdBackend {}

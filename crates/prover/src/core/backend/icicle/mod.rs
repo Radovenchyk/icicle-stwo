@@ -43,7 +43,7 @@ use crate::core::vcs::blake2_merkle::{Blake2sMerkleChannel, Blake2sMerkleHasher}
 use crate::core::vcs::ops::{MerkleHasher, MerkleOps};
 use crate::core::vcs::poseidon252_merkle::{Poseidon252MerkleChannel, Poseidon252MerkleHasher};
 use crate::core::ColumnVec;
-#[derive(Copy, Clone, Debug, Deserialize, Serialize, Default)]
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, Default, PartialEq)]
 pub struct IcicleBackend;
 
 impl Backend for IcicleBackend {}
@@ -583,7 +583,7 @@ impl<C: Channel> GrindOps<C> for IcicleBackend {
 
 impl BackendForChannel<Blake2sMerkleChannel> for IcicleBackend {}
 impl BackendForChannel<Poseidon252MerkleChannel> for IcicleBackend {}
-impl<T: Debug + Clone + Default> ColumnOps<T> for IcicleBackend {
+impl<T: Debug + Clone + Default + PartialEq> ColumnOps<T> for IcicleBackend {
     type Column = Vec<T>;
 
     fn bit_reverse_column(column: &mut Self::Column) {

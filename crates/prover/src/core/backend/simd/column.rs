@@ -33,7 +33,7 @@ impl FieldOps<SecureField> for SimdBackend {
 }
 
 /// An efficient structure for storing and operating on a arbitrary number of [`BaseField`] values.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct BaseColumn {
     pub data: Vec<PackedBaseField>,
     /// The number of [`BaseField`]s in the vector.
@@ -132,7 +132,7 @@ impl FromIterator<BaseField> for BaseColumn {
 }
 
 // A efficient structure for storing and operating on a arbitrary number of [`SecureField`] values.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct CM31Column {
     pub data: Vec<PackedCM31>,
     pub length: usize,
@@ -223,7 +223,7 @@ pub struct VeryPackedBaseColumnMutSlice<'a>(pub &'a mut [VeryPackedBaseField]);
 
 /// An efficient structure for storing and operating on a arbitrary number of [`SecureField`]
 /// values.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct SecureColumn {
     pub data: Vec<PackedSecureField>,
     /// The number of [`SecureField`]s in the vector.
@@ -451,7 +451,7 @@ impl FromIterator<SecureField> for SecureColumnByCoords<SimdBackend> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct VeryPackedBaseColumn {
     pub data: Vec<VeryPackedBaseField>,
     /// The number of [`BaseField`]s in the vector.

@@ -11,6 +11,7 @@ use crate::core::fields::m31::BaseField;
 use crate::core::utils::PeekableExt;
 use crate::core::ColumnVec;
 
+#[derive(Debug, PartialEq)]
 pub struct MerkleVerifier<H: MerkleHasher> {
     pub root: H::Hash,
     pub column_log_sizes: Vec<u32>,

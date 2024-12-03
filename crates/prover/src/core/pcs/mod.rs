@@ -25,7 +25,7 @@ pub struct TreeSubspan {
     pub col_end: usize,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PcsConfig {
     pub pow_bits: u32,
     pub fri_config: FriConfig,

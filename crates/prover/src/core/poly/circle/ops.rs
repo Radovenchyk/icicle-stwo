@@ -15,7 +15,7 @@ use std::fmt::Debug;
 pub trait PolyOps: FieldOps<BaseField> + Sized + Debug {
     // TODO(alont): Use a column instead of this type.
     /// The type for precomputed twiddles.
-    type Twiddles: Debug;
+    type Twiddles: Debug + PartialEq;
 
     /// Creates a [CircleEvaluation] from values ordered according to [CanonicCoset].
     /// Used by the [`CircleEvaluation::new_canonical_ordered()`] function.

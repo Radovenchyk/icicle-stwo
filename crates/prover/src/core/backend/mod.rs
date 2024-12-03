@@ -30,15 +30,16 @@ pub trait Backend:
     + FriOps
     + AccumulationOps
     + GkrOps
+    + PartialEq
 {
 }
 
 pub trait BackendForChannel<MC: MerkleChannel>:
-    Backend + MerkleOps<MC::H> + GrindOps<MC::C>
+    Backend + MerkleOps<MC::H> + GrindOps<MC::C> + PartialEq
 {
 }
 
-pub trait ColumnOps<T> {
+pub trait ColumnOps<T: PartialEq> {
     type Column: Column<T>;
     fn bit_reverse_column(column: &mut Self::Column);
 }
@@ -46,7 +47,7 @@ pub trait ColumnOps<T> {
 pub type Col<B, T> = <B as ColumnOps<T>>::Column;
 
 // TODO(alont): Consider removing the generic parameter and only support BaseField.
-pub trait Column<T>: Clone + Debug + FromIterator<T> {
+pub trait Column<T>: Clone + Debug + FromIterator<T> + PartialEq {
     /// Creates a new column of zeros with the given length.
     fn zeros(len: usize) -> Self;
     /// Creates a new column of uninitialized values with the given length.

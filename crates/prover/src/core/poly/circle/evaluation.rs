@@ -16,7 +16,7 @@ use crate::core::utils::bit_reverse_index;
 
 /// An evaluation defined on a [CircleDomain].
 /// The values are ordered according to the [CircleDomain] ordering.
-#[derive(Educe)]
+#[derive(Educe, PartialEq)]
 #[educe(Clone, Debug)]
 pub struct CircleEvaluation<B: FieldOps<F>, F: ExtensionOf<BaseField>, EvalOrder = NaturalOrder> {
     pub domain: CircleDomain,
