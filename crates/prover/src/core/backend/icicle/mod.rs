@@ -10,10 +10,9 @@ use std::mem::{size_of_val, transmute};
 use icicle_core::tree::{merkle_tree_digests_len, TreeBuilderConfig};
 use icicle_core::vec_ops::{accumulate_scalars, VecOpsConfig};
 use icicle_core::Matrix;
+use icicle_hash::blake2s::build_blake2s_mmcs;
 use icicle_m31::dcct::{evaluate, get_dcct_root_of_unity, initialize_dcct_domain, interpolate};
 use icicle_m31::fri::{self, fold_circle_into_line, FriConfig};
-use icicle_hash::blake2s::build_blake2s_mmcs;
-
 use icicle_m31::quotient;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -159,7 +158,7 @@ impl MerkleOps<Blake2sMerkleHasher> for IcicleBackend {
     const COMMIT_IMPLEMENTED: bool = true;
 
     fn commit_columns(
-        columns: Vec<&Col<Self, BaseField>>
+        columns: Vec<&Col<Self, BaseField>>,
     ) -> Vec<Col<Self, <Blake2sMerkleHasher as MerkleHasher>::Hash>> {
         let mut config = TreeBuilderConfig::default();
         config.arity = 2;
@@ -167,12 +166,12 @@ impl MerkleOps<Blake2sMerkleHasher> for IcicleBackend {
         config.sort_inputs = false;
 
         let log_max = columns
-                .iter()
-                .sorted_by_key(|c| Reverse(c.len()))
-                .next()
-                .unwrap()
-                .len()
-                .ilog2();
+            .iter()
+            .sorted_by_key(|c| Reverse(c.len()))
+            .next()
+            .unwrap()
+            .len()
+            .ilog2();
         let mut matrices = vec![];
         for col in columns.into_iter().sorted_by_key(|c| Reverse(c.len())) {
             matrices.push(Matrix::from_slice(col, 4, col.len()));
@@ -183,7 +182,8 @@ impl MerkleOps<Blake2sMerkleHasher> for IcicleBackend {
 
         build_blake2s_mmcs(&matrices, digests_slice, &config).unwrap();
 
-        let mut digests: &[<Blake2sMerkleHasher as MerkleHasher>::Hash] = unsafe { std::mem::transmute(digests.as_mut_slice()) };
+        let mut digests: &[<Blake2sMerkleHasher as MerkleHasher>::Hash] =
+            unsafe { std::mem::transmute(digests.as_mut_slice()) };
         // Transmute digests into stwo format
         let mut layers = vec![];
         let mut offset = 0usize;
@@ -194,13 +194,13 @@ impl MerkleOps<Blake2sMerkleHasher> for IcicleBackend {
 
             // let layer = unsafe {
             //     Vec::from_raw_parts(
-            //         digests.as_mut_ptr().add(offset) as *mut <Blake2sMerkleHasher as MerkleHasher>::Hash,
-            //         number_of_rows,
+            //         digests.as_mut_ptr().add(offset) as *mut <Blake2sMerkleHasher as
+            // MerkleHasher>::Hash,         number_of_rows,
             //         number_of_rows
             //     )
             // };
             let mut layer = vec![];
-            layer.extend_from_slice(&digests[offset..offset+number_of_rows]);
+            layer.extend_from_slice(&digests[offset..offset + number_of_rows]);
             // for h in &layer {
             //     println!("{}", h);
             // }
@@ -334,49 +334,49 @@ impl PolyOps for IcicleBackend {
         columns: impl IntoIterator<Item = CircleEvaluation<Self, BaseField, BitReversedOrder>>,
         twiddles: &TwiddleTree<Self>,
     ) -> Vec<CirclePoly<Self>> {
-        // columns
-        //     .into_iter()
-        //     .map(|eval| eval.interpolate_with_twiddles(twiddles))
-        //     .collect()
-
-        let mut result = Vec::new();
-        let values: Vec<Vec<_>> = columns.into_iter().map(|eval| eval.values).collect();
-        let domain_size = values[0].len();
-        let domain_size_log2 = (domain_size as f64).log2() as u32;
-        let batch_size = values.len();
-        let ctx = DeviceContext::default();
-        let rou = get_dcct_root_of_unity(domain_size as _);
-        initialize_dcct_domain(domain_size_log2, rou, &ctx).unwrap();
+        //TODO: it's variable size batch after all :(
+        columns
+            .into_iter()
+            .map(|eval| eval.interpolate_with_twiddles(twiddles))
+            .collect()
+        // let mut result = Vec::new();
+        // let values: Vec<Vec<_>> = columns.into_iter().map(|eval| eval.values).collect();
+        // let domain_size = values[0].len();
+        // let domain_size_log2 = (domain_size as f64).log2() as u32;
+        // let batch_size = values.len();
+        // let ctx = DeviceContext::default();
+        // let rou = get_dcct_root_of_unity(domain_size as _);
+        // initialize_dcct_domain(domain_size_log2, rou, &ctx).unwrap();
         // assuming this is always evenly-sized batch m x n
-
-        let mut result_tr: DeviceVec<ScalarField> =
-            DeviceVec::cuda_malloc(domain_size * batch_size).unwrap();
-        let mut evaluations_batch = vec![ScalarField::zero(); domain_size * batch_size];
-
-        let mut res_host = HostSlice::from_mut_slice(&mut evaluations_batch[..]);
+        //
+        // let mut result_tr: DeviceVec<ScalarField> =
+        // DeviceVec::cuda_malloc(domain_size * batch_size).unwrap();
+        // let mut evaluations_batch = vec![ScalarField::zero(); domain_size * batch_size];
+        //
+        // let mut res_host = HostSlice::from_mut_slice(&mut evaluations_batch[..]);
         // result_tr.copy_to_host(res_host).unwrap();
-
+        //
         // non-contiguous memory on host
-        let evals: Vec<Vec<ScalarField>> = unsafe { transmute(values) };
-
+        // let evals: Vec<Vec<ScalarField>> = unsafe { transmute(values) };
+        //
         // contiguous memory on device
-        result_tr
-            .copy_from_host_slice_vec_async(&evals, &ctx.stream)
-            .unwrap();
-
-        ctx.stream.synchronize().unwrap();
-
-        let mut cfg = NTTConfig::default();
-        cfg.batch_size = batch_size as _;
-        cfg.ordering = Ordering::kNM;
-        evaluate(&result_tr[..], &cfg, res_host).unwrap();
-        for i in 0..batch_size {
-            result.push(CirclePoly::new(unsafe {
-                transmute(res_host.as_slice()[i * domain_size..(i + 1) * domain_size].to_vec())
-            }));
-        }
-
-        result
+        // result_tr
+        // .copy_from_host_slice_vec_async(&evals, &ctx.stream)
+        // .unwrap();
+        //
+        // ctx.stream.synchronize().unwrap();
+        //
+        // let mut cfg = NTTConfig::default();
+        // cfg.batch_size = batch_size as _;
+        // cfg.ordering = Ordering::kNM;
+        // evaluate(&result_tr[..], &cfg, res_host).unwrap();
+        // for i in 0..batch_size {
+        // result.push(CirclePoly::new(unsafe {
+        // transmute(res_host.as_slice()[i * domain_size..(i + 1) * domain_size].to_vec())
+        // }));
+        // }
+        //
+        // result
     }
 
     fn evaluate_polynomials(
@@ -384,51 +384,61 @@ impl PolyOps for IcicleBackend {
         log_blowup_factor: u32,
         twiddles: &TwiddleTree<Self>,
     ) -> Vec<CircleEvaluation<Self, BaseField, BitReversedOrder>> {
-        let mut result = Vec::new();
-        let domain =
-            CanonicCoset::new(polynomials[0].log_size() + log_blowup_factor).circle_domain();
-        let rou = get_dcct_root_of_unity(domain.size() as _);
-        let domain_size = 1 << domain.log_size();
-        let batch_size = polynomials.len();
-        let ctx = DeviceContext::default();
-        initialize_dcct_domain(domain.log_size(), rou, &ctx).unwrap();
-        // assuming this is always evenly-sized batch m x n
-
-        let mut result_tr: DeviceVec<ScalarField> =
-            DeviceVec::cuda_malloc(domain_size * batch_size).unwrap();
-        let mut evaluations_batch = vec![ScalarField::zero(); domain_size * batch_size];
-
-        let mut res_host = HostSlice::from_mut_slice(&mut evaluations_batch[..]);
-        // result_tr.copy_to_host(res_host).unwrap();
-
-        // non-contiguous memory on host
-        let vals_extended = polynomials
+        //TODO: it's variable size batch after all :(
+        polynomials
             .iter()
-            .map(|poly| poly.extend(domain.log_size()).coeffs)
-            .collect_vec();
-        let evals: Vec<Vec<ScalarField>> = unsafe { transmute(vals_extended) };
+            .map(|poly| {
+                poly.evaluate_with_twiddles(
+                    CanonicCoset::new(poly.log_size() + log_blowup_factor).circle_domain(),
+                    twiddles,
+                )
+            })
+            .collect_vec()
+        // let mut result = Vec::new();
+        // let domain =
+        //     CanonicCoset::new(polynomials[0].log_size() + log_blowup_factor).circle_domain();
+        // let rou = get_dcct_root_of_unity(domain.size() as _);
+        // let domain_size = 1 << domain.log_size();
+        // let batch_size = polynomials.len();
+        // let ctx = DeviceContext::default();
+        // initialize_dcct_domain(domain.log_size(), rou, &ctx).unwrap();
+        // // assuming this is always evenly-sized batch m x n
 
-        // contiguous memory on device
-        result_tr
-            .copy_from_host_slice_vec_async(&evals, &ctx.stream)
-            .unwrap();
+        // let mut result_tr: DeviceVec<ScalarField> =
+        //     DeviceVec::cuda_malloc(domain_size * batch_size).unwrap();
+        // let mut evaluations_batch = vec![ScalarField::zero(); domain_size * batch_size];
 
-        ctx.stream.synchronize().unwrap();
+        // let mut res_host = HostSlice::from_mut_slice(&mut evaluations_batch[..]);
+        // // result_tr.copy_to_host(res_host).unwrap();
 
-        let mut cfg = NTTConfig::default();
-        cfg.batch_size = batch_size as _;
-        cfg.ordering = Ordering::kNM;
-        evaluate(&result_tr[..], &cfg, res_host).unwrap();
-        for i in 0..batch_size {
-            result.push(IcicleCircleEvaluation::<BaseField, BitReversedOrder>::new(
-                domain,
-                unsafe {
-                    transmute(res_host.as_slice()[i * domain_size..(i + 1) * domain_size].to_vec())
-                },
-            ));
-        }
+        // // non-contiguous memory on host
+        // let vals_extended = polynomials
+        //     .iter()
+        //     .map(|poly| poly.extend(domain.log_size()).coeffs)
+        //     .collect_vec();
+        // let evals: Vec<Vec<ScalarField>> = unsafe { transmute(vals_extended) };
 
-        result
+        // // contiguous memory on device
+        // result_tr
+        //     .copy_from_host_slice_vec_async(&evals, &ctx.stream)
+        //     .unwrap();
+
+        // ctx.stream.synchronize().unwrap();
+
+        // let mut cfg = NTTConfig::default();
+        // cfg.batch_size = batch_size as _;
+        // cfg.ordering = Ordering::kNM;
+        // evaluate(&result_tr[..], &cfg, res_host).unwrap();
+        // for i in 0..batch_size {
+        //     result.push(IcicleCircleEvaluation::<BaseField, BitReversedOrder>::new(
+        //         domain,
+        //         unsafe {
+        //             transmute(res_host.as_slice()[i * domain_size..(i + 1) *
+        // domain_size].to_vec())         },
+        //     ));
+        // }
+
+        // result
     }
 
     fn precompute_twiddles(coset: Coset) -> TwiddleTree<Self> {
@@ -1004,9 +1014,11 @@ mod tests {
             })
             .collect_vec();
 
-        let merkle = MerkleProver::<CpuBackend, Blake2sMerkleHasher>::commit(cols.iter().collect_vec());
+        let merkle =
+            MerkleProver::<CpuBackend, Blake2sMerkleHasher>::commit(cols.iter().collect_vec());
 
-        let icicle_merkle = MerkleProver::<IcicleBackend, Blake2sMerkleHasher>::commit(cols.iter().collect_vec());
+        let icicle_merkle =
+            MerkleProver::<IcicleBackend, Blake2sMerkleHasher>::commit(cols.iter().collect_vec());
 
         for (layer, icicle_layer) in merkle.layers.iter().zip(icicle_merkle.layers.iter()) {
             for (h1, h2) in layer.iter().zip(icicle_layer.iter()) {
@@ -1160,8 +1172,10 @@ mod tests {
                 columns_and_values: vec![(0, value)],
             }],
             LOG_BLOWUP_FACTOR,
-        ).to_vec();
-        let polynomial_icicle = IcicleCirclePoly::new((0..1 << LOG_SIZE).map(|i| m31!(i)).collect());
+        )
+        .to_vec();
+        let polynomial_icicle =
+            IcicleCirclePoly::new((0..1 << LOG_SIZE).map(|i| m31!(i)).collect());
         let eval_icicle = polynomial_icicle.evaluate(eval_domain);
         let quot_eval_icicle = IcicleBackend::accumulate_quotients(
             eval_domain,
@@ -1172,7 +1186,8 @@ mod tests {
                 columns_and_values: vec![(0, value)],
             }],
             LOG_BLOWUP_FACTOR,
-        ).to_vec();
+        )
+        .to_vec();
         assert_eq!(quot_eval_cpu, quot_eval_icicle);
     }
 }
