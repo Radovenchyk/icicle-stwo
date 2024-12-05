@@ -43,6 +43,8 @@ use crate::core::vcs::blake2_merkle::{Blake2sMerkleChannel, Blake2sMerkleHasher}
 use crate::core::vcs::ops::{MerkleHasher, MerkleOps};
 use crate::core::vcs::poseidon252_merkle::{Poseidon252MerkleChannel, Poseidon252MerkleHasher};
 use crate::core::ColumnVec;
+
+pub mod utils;
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, Default, PartialEq)]
 pub struct IcicleBackend;
 
