@@ -11,6 +11,7 @@ use crate::core::fields::FieldOps;
 use crate::core::poly::twiddles::TwiddleTree;
 use crate::core::poly::BitReversedOrder;
 
+#[derive(Debug)]
 pub struct SecureCirclePoly<B: FieldOps<BaseField>>(pub [CirclePoly<B>; SECURE_EXTENSION_DEGREE]);
 
 impl<B: PolyOps> SecureCirclePoly<B> {
@@ -61,7 +62,7 @@ impl<B: FieldOps<BaseField>> Deref for SecureCirclePoly<B> {
 ///
 /// The evaluation is stored as a column major array of [`SECURE_EXTENSION_DEGREE`] many base field
 /// evaluations. The evaluations are ordered according to the [CircleDomain] ordering.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SecureEvaluation<B: FieldOps<BaseField>, EvalOrder> {
     pub domain: CircleDomain,
     pub values: SecureColumnByCoords<B>,

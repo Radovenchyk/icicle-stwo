@@ -94,6 +94,12 @@ pub fn gen_interaction_trace(
     ColumnVec<CircleEvaluation<SimdBackend, M31, BitReversedOrder>>,
     [QM31; 2],
 ) {
+    println!("Generating interaction trace...");
+    println!("  n_rows: {}", n_rows);
+    println!("  inc_index: {}", inc_index);
+    println!("  lookup_elements: {:?}", lookup_elements);
+    println!("  trace: {:?}\n**********", trace);
+    
     let log_size = trace[0].domain.log_size();
     assert!(n_rows <= 1 << log_size, "n_rows exceeds the trace size");
 

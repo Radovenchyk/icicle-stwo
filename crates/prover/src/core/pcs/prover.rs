@@ -23,7 +23,7 @@ use crate::core::vcs::prover::{MerkleDecommitment, MerkleProver};
 
 /// The prover side of a FRI polynomial commitment scheme. See [super].
 #[derive(Debug, PartialEq)]
-pub struct CommitmentSchemeProver<'a, B: BackendForChannel<MC>+ PartialEq, MC: MerkleChannel> {
+pub struct CommitmentSchemeProver<'a, B: BackendForChannel<MC> + PartialEq, MC: MerkleChannel> {
     pub trees: TreeVec<CommitmentTreeProver<B, MC>>,
     pub config: PcsConfig,
     twiddles: &'a TwiddleTree<B>,
@@ -115,6 +115,9 @@ impl<'a, B: BackendForChannel<MC>, MC: MerkleChannel> CommitmentSchemeProver<'a,
             self.config.fri_config.log_blowup_factor,
         );
 
+        println!("columns: {:?}", columns);
+        println!("quotients: {:?}", quotients);
+
         // Run FRI commitment phase on the oods quotients.
         let fri_prover =
             FriProver::<B, MC>::commit(channel, self.config.fri_config, &quotients, self.twiddles);
@@ -172,7 +175,7 @@ impl<'a, 'b, B: BackendForChannel<MC>, MC: MerkleChannel> TreeBuilder<'a, 'b, B,
         let span = span!(Level::INFO, "Interpolation for commitment").entered();
         let polys = B::interpolate_columns(columns, self.commitment_scheme.twiddles);
         span.exit();
-
+        println!(" ***polys: {:?}", polys);
         self.extend_polys(polys)
     }
 

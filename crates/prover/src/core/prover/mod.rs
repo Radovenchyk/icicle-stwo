@@ -44,12 +44,16 @@ pub fn prove<B: BackendForChannel<MC>, MC: MerkleChannel>(
     let span = span!(Level::INFO, "Composition").entered();
     let span1 = span!(Level::INFO, "Generation").entered();
     let composition_poly = component_provers.compute_composition_polynomial(random_coeff, &trace);
+
+    println!("Composition polynomial: {:?}", composition_poly);
     span1.exit();
 
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_polys(composition_poly.into_coordinate_polys());
     tree_builder.commit(channel);
     span.exit();
+
+    println!("commitment_scheme proof: {:?}", commitment_scheme);
 
     // Draw OODS point.
     let oods_point = CirclePoint::<SecureField>::get_random_point(channel);
@@ -59,6 +63,9 @@ pub fn prove<B: BackendForChannel<MC>, MC: MerkleChannel>(
 
     // Add the composition polynomial mask points.
     sample_points.push(vec![vec![oods_point]; SECURE_EXTENSION_DEGREE]);
+
+    println!("sample points: {:?}", sample_points);
+    println!("channel: {:?}", channel);
 
     // Prove the trace and composition OODS values, and retrieve them.
     let commitment_scheme_proof = commitment_scheme.prove_values(sample_points, channel);

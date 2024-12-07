@@ -28,7 +28,7 @@ impl ChannelTime {
     }
 }
 
-pub trait Channel: Default + Clone {
+pub trait Channel: Default + Clone + Debug {
     const BYTES_PER_HASH: usize;
 
     fn trailing_zeros(&self) -> u32;
@@ -44,8 +44,8 @@ pub trait Channel: Default + Clone {
     /// Returns a vector of random bytes of length `BYTES_PER_HASH`.
     fn draw_random_bytes(&mut self) -> Vec<u8>;
 }
-
-pub trait MerkleChannel: Default + PartialEq {
+use std::fmt::Debug;
+pub trait MerkleChannel: Default + PartialEq + Debug {
     type C: Channel;
     type H: MerkleHasher;
     fn mix_root(channel: &mut Self::C, root: <Self::H as MerkleHasher>::Hash);

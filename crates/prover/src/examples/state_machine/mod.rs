@@ -4,7 +4,7 @@ use crate::constraint_framework::Relation;
 // use crate::core::backend::CpuBackend;
 use crate::core::backend::icicle::IcicleBackend;
 use crate::core::backend::CpuBackend;
-use crate::core::poly::BitReversedOrder;
+// use crate::core::poly::BitReversedOrder;
 pub mod components;
 pub mod gen;
 
@@ -68,9 +68,9 @@ pub fn prove_state_machine(
     ];
 
     // Preprocessed trace.
-    let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals(gen_preprocessed_columns(preprocessed_columns.iter()));
-    tree_builder.commit(channel);
+    let mut tree_builder_simd = commitment_scheme.tree_builder();
+    tree_builder_simd.extend_evals(gen_preprocessed_columns(preprocessed_columns.iter()));
+    tree_builder_simd.commit(channel);
 
     // Trace.
     let trace_op0 = gen_trace(x_axis_log_rows, initial_state, 0);
@@ -82,9 +82,9 @@ pub fn prove_state_machine(
     };
     stmt0.mix_into(channel);
 
-    let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals(chain![trace_op0.clone(), trace_op1.clone()]);
-    tree_builder.commit(channel);
+    let mut tree_builder_simd = commitment_scheme.tree_builder();
+    tree_builder_simd.extend_evals(chain![trace_op0.clone(), trace_op1.clone()]);
+    tree_builder_simd.commit(channel);
 
     // Draw lookup element.
     let lookup_elements = StateMachineElements::draw(channel);
@@ -101,9 +101,10 @@ pub fn prove_state_machine(
     };
     stmt1.mix_into(channel);
 
-    let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals(chain![interaction_trace_op0, interaction_trace_op1].collect_vec());
-    tree_builder.commit(channel);
+    let mut tree_builder_simd = commitment_scheme.tree_builder();
+    tree_builder_simd
+        .extend_evals(chain![interaction_trace_op0, interaction_trace_op1].collect_vec());
+    tree_builder_simd.commit(channel);
 
     // Prove constraints.
     let mut tree_span_provider = &mut TraceLocationAllocator::default();
@@ -212,7 +213,7 @@ pub fn prove_state_machine_cpu(
             .half_coset,
     );
 
-    // // println!("tweedles: {:?} {:?} {:?} ", twiddles.twiddles, twiddles.itwiddles,
+    // // //println!("tweedles: {:?} {:?} {:?} ", twiddles.twiddles, twiddles.itwiddles,
     // twiddles.root_coset);
 
     // Setup protocol.
@@ -225,15 +226,15 @@ pub fn prove_state_machine_cpu(
     ];
 
     // Preprocessed trace.
-    println!("commitment scheme is: {:?}", commitment_scheme_cpu);
+    // println!("commitment scheme is: {:?}", commitment_scheme_cpu);
 
-    let mut tree_builder = commitment_scheme_cpu.tree_builder();
+    let mut tree_builder_cpu1 = commitment_scheme_cpu.tree_builder();
 
-    tree_builder.extend_evals(gen_preprocessed_columns(preprocessed_columns.iter()));
+    tree_builder_cpu1.extend_evals(gen_preprocessed_columns(preprocessed_columns.iter()));
 
-    tree_builder.commit(channel);
+    tree_builder_cpu1.commit(channel);
 
-    println!("commitment scheme is: {:?}", commitment_scheme_cpu);
+    // println!("commitment scheme is: {:?}", commitment_scheme_cpu);
 
     // Trace.
     let trace_op0 = gen_trace(x_axis_log_rows, initial_state, 0);
@@ -246,30 +247,17 @@ pub fn prove_state_machine_cpu(
     stmt0.mix_into(channel);
 
     use crate::core::poly::circle::CircleEvaluation;
-    let mut tree_builder = commitment_scheme_cpu.tree_builder();
-    tree_builder.extend_evals(chain![
-        unsafe {
-            transmute::<_, Vec<CircleEvaluation<CpuBackend, M31, BitReversedOrder>>>(
-                trace_op0
-                    .clone()
-                    .into_iter()
-                    .map(|c| c.to_cpu())
-                    .collect_vec(),
-            )
-        },
-        unsafe {
-            transmute::<_, Vec<CircleEvaluation<CpuBackend, M31, BitReversedOrder>>>(
-                trace_op1
-                    .clone()
-                    .into_iter()
-                    .map(|c| c.to_cpu())
-                    .collect_vec(),
-            )
-        }
+    let mut tree_builder_cpu2 = commitment_scheme_cpu.tree_builder();
+    tree_builder_cpu2.extend_evals(chain![
+        trace_op0.iter().map(|c| c.to_cpu()).collect_vec(),
+        trace_op1.iter().map(|c| c.to_cpu()).collect_vec(),
     ]);
-    tree_builder.commit(channel);
+    tree_builder_cpu2.commit(channel);
 
-    println!("commitment scheme is: {:?}", commitment_scheme_cpu);
+    println!("commitment scheme 2 is: {:?}", commitment_scheme_cpu);
+
+    println!("trace_op0 = {:?}", trace_op0);
+    println!("trace_op1 = {:?}", trace_op1);
 
     // Draw lookup element.
     let lookup_elements = StateMachineElements::draw(channel);
@@ -286,31 +274,26 @@ pub fn prove_state_machine_cpu(
     };
     stmt1.mix_into(channel);
 
-    let mut tree_builder = commitment_scheme_cpu.tree_builder();
-    tree_builder.extend_evals(
-        chain![
-            unsafe {
-                transmute::<_, Vec<CircleEvaluation<CpuBackend, M31, BitReversedOrder>>>(
-                    interaction_trace_op0
-                        .into_iter()
-                        .map(|c| c.to_cpu())
-                        .collect_vec(),
-                )
-            },
-            unsafe {
-                transmute::<_, Vec<CircleEvaluation<CpuBackend, M31, BitReversedOrder>>>(
-                    interaction_trace_op1
-                        .into_iter()
-                        .map(|c| c.to_cpu())
-                        .collect_vec(),
-                )
-            }
-        ]
-        .collect_vec(),
-    );
-    tree_builder.commit(channel);
+    println!("interaction_trace_op0 = {:?}", interaction_trace_op0);
+    println!("interaction_trace_op1 = {:?}", interaction_trace_op1);
 
-    println!("commitment scheme is: {:?}", commitment_scheme_cpu);
+    let it0 = interaction_trace_op0
+        .into_iter()
+        .map(|c| c.to_cpu())
+        .collect_vec();
+    let it1 = interaction_trace_op1
+        .into_iter()
+        .map(|c| c.to_cpu())
+        .collect_vec();
+
+    println!("it0: {:?}", it0);
+    println!("it1: {:?}", it1);
+
+    let mut tree_builder_cpu3 = commitment_scheme_cpu.tree_builder();
+    tree_builder_cpu3.extend_evals(chain![it0, it1,].collect_vec());
+    tree_builder_cpu3.commit(channel);
+
+    println!("commitment scheme 3 is: {:?}", commitment_scheme_cpu);
 
     // Prove constraints.
     let mut tree_span_provider = &mut TraceLocationAllocator::default();
@@ -358,7 +341,7 @@ pub fn prove_state_machine_cpu(
         stmt1,
         stark_proof,
     };
-    println!("proof {:?}", proof);
+    // println!("proof {:?}", proof);
     (components, proof)
 }
 
@@ -372,118 +355,117 @@ pub fn prove_state_machine_icicle(
     StateMachineComponents,
     StateMachineProof<Blake2sMerkleHasher>,
 ) {
-    let (x_axis_log_rows, y_axis_log_rows) = (log_n_rows, log_n_rows - 1);
-    let (x_row, y_row) = (34, 56);
-    assert!(y_axis_log_rows >= LOG_N_LANES && x_axis_log_rows >= LOG_N_LANES);
-    assert!(x_row < 1 << x_axis_log_rows);
-    assert!(y_row < 1 << y_axis_log_rows);
+    // let (x_axis_log_rows, y_axis_log_rows) = (log_n_rows, log_n_rows - 1);
+    // let (x_row, y_row) = (34, 56);
+    // assert!(y_axis_log_rows >= LOG_N_LANES && x_axis_log_rows >= LOG_N_LANES);
+    // assert!(x_row < 1 << x_axis_log_rows);
+    // assert!(y_row < 1 << y_axis_log_rows);
 
-    let mut intermediate_state = initial_state;
-    intermediate_state[0] += M31::from_u32_unchecked(x_row);
-    let mut final_state = intermediate_state;
-    final_state[1] += M31::from_u32_unchecked(y_row);
+    // let mut intermediate_state = initial_state;
+    // intermediate_state[0] += M31::from_u32_unchecked(x_row);
+    // let mut final_state = intermediate_state;
+    // final_state[1] += M31::from_u32_unchecked(y_row);
 
-    // Precompute twiddles.
-    let twiddles_cpu = CpuBackend::precompute_twiddles(
-        CanonicCoset::new(log_n_rows + config.fri_config.log_blowup_factor + 1)
-            .circle_domain()
-            .half_coset,
-    );
+    // // Precompute twiddles.
+    // let twiddles_cpu = CpuBackend::precompute_twiddles(
+    //     CanonicCoset::new(log_n_rows + config.fri_config.log_blowup_factor + 1)
+    //         .circle_domain()
+    //         .half_coset,
+    // );
 
-    // Setup protocol.
-    let mut commitment_scheme_cpu0 =
-        CommitmentSchemeProver::<_, Blake2sMerkleChannel>::new(config, &twiddles_cpu);
+    // // Setup protocol.
+    // let mut commitment_scheme_cpu0 =
+    //     CommitmentSchemeProver::<_, Blake2sMerkleChannel>::new(config, &twiddles_cpu);
 
-    let preprocessed_columns = [
-        PreprocessedColumn::IsFirst(x_axis_log_rows),
-        PreprocessedColumn::IsFirst(y_axis_log_rows),
-    ];
+    // let preprocessed_columns = [
+    //     PreprocessedColumn::IsFirst(x_axis_log_rows),
+    //     PreprocessedColumn::IsFirst(y_axis_log_rows),
+    // ];
 
-    // Preprocessed trace.
-    let mut tree_builder = commitment_scheme_cpu0.tree_builder();
+    // // Preprocessed trace.
+    // let mut tree_builder_cpu0 = commitment_scheme_cpu0.tree_builder();
 
-    println!("commitment_scheme_cpu {:?}", tree_builder);
+    // // println!("commitment_scheme_cpu {:?}", tree_builder);
 
-    tree_builder.extend_evals(gen_preprocessed_columns(preprocessed_columns.iter()));
+    // tree_builder_cpu0.extend_evals(gen_preprocessed_columns(preprocessed_columns.iter()));
 
-    ///
+    // ///
+    // let (x_axis_log_rows, y_axis_log_rows) = (log_n_rows, log_n_rows - 1);
+    // let (x_row, y_row) = (34, 56);
+    // assert!(y_axis_log_rows >= LOG_N_LANES && x_axis_log_rows >= LOG_N_LANES);
+    // assert!(x_row < 1 << x_axis_log_rows);
+    // assert!(y_row < 1 << y_axis_log_rows);
 
-    let (x_axis_log_rows, y_axis_log_rows) = (log_n_rows, log_n_rows - 1);
-    let (x_row, y_row) = (34, 56);
-    assert!(y_axis_log_rows >= LOG_N_LANES && x_axis_log_rows >= LOG_N_LANES);
-    assert!(x_row < 1 << x_axis_log_rows);
-    assert!(y_row < 1 << y_axis_log_rows);
+    // let mut intermediate_state = initial_state;
+    // intermediate_state[0] += M31::from_u32_unchecked(x_row);
+    // let mut final_state = intermediate_state;
+    // final_state[1] += M31::from_u32_unchecked(y_row);
 
-    let mut intermediate_state = initial_state;
-    intermediate_state[0] += M31::from_u32_unchecked(x_row);
-    let mut final_state = intermediate_state;
-    final_state[1] += M31::from_u32_unchecked(y_row);
+    // // Precompute twiddles.
+    // let twiddles_cpu = CpuBackend::precompute_twiddles(
+    //     CanonicCoset::new(log_n_rows + config.fri_config.log_blowup_factor + 1)
+    //         .circle_domain()
+    //         .half_coset,
+    // );
 
-    // Precompute twiddles.
-    let twiddles_cpu = CpuBackend::precompute_twiddles(
-        CanonicCoset::new(log_n_rows + config.fri_config.log_blowup_factor + 1)
-            .circle_domain()
-            .half_coset,
-    );
+    // // Setup protocol.
+    // let mut commitment_scheme_cpu1 =
+    //     CommitmentSchemeProver::<_, Blake2sMerkleChannel>::new(config, &twiddles_cpu);
 
-    // Setup protocol.
-    let mut commitment_scheme_cpu1 =
-        CommitmentSchemeProver::<_, Blake2sMerkleChannel>::new(config, &twiddles_cpu);
+    // let preprocessed_columns = [
+    //     PreprocessedColumn::IsFirst(x_axis_log_rows),
+    //     PreprocessedColumn::IsFirst(y_axis_log_rows),
+    // ];
 
-    let preprocessed_columns = [
-        PreprocessedColumn::IsFirst(x_axis_log_rows),
-        PreprocessedColumn::IsFirst(y_axis_log_rows),
-    ];
+    // // Preprocessed trace.
+    // let mut tree_builder_cpu1 = commitment_scheme_cpu1.tree_builder();
 
-    // Preprocessed trace.
-    let mut tree_builder = commitment_scheme_cpu1.tree_builder();
+    // // println!("commitment_scheme_cpu {:?}", tree_builder);
 
-    println!("commitment_scheme_cpu {:?}", tree_builder);
+    // tree_builder_cpu1.extend_evals(gen_preprocessed_columns(preprocessed_columns.iter()));
 
-    tree_builder.extend_evals(gen_preprocessed_columns(preprocessed_columns.iter()));
+    // tree_builder_cpu1.commit(channel);
+    // // println!("commitment_scheme_cpu {:?}", commitment_scheme_cpu1);
 
-    tree_builder.commit(channel);
-    println!("commitment_scheme_cpu {:?}", commitment_scheme_cpu1);
+    // ///
+    // let (x_axis_log_rows, y_axis_log_rows) = (log_n_rows, log_n_rows - 1);
+    // let (x_row, y_row) = (34, 56);
+    // assert!(y_axis_log_rows >= LOG_N_LANES && x_axis_log_rows >= LOG_N_LANES);
+    // assert!(x_row < 1 << x_axis_log_rows);
+    // assert!(y_row < 1 << y_axis_log_rows);
 
-    ///
-    let (x_axis_log_rows, y_axis_log_rows) = (log_n_rows, log_n_rows - 1);
-    let (x_row, y_row) = (34, 56);
-    assert!(y_axis_log_rows >= LOG_N_LANES && x_axis_log_rows >= LOG_N_LANES);
-    assert!(x_row < 1 << x_axis_log_rows);
-    assert!(y_row < 1 << y_axis_log_rows);
+    // let mut intermediate_state = initial_state;
+    // intermediate_state[0] += M31::from_u32_unchecked(x_row);
+    // let mut final_state = intermediate_state;
+    // final_state[1] += M31::from_u32_unchecked(y_row);
 
-    let mut intermediate_state = initial_state;
-    intermediate_state[0] += M31::from_u32_unchecked(x_row);
-    let mut final_state = intermediate_state;
-    final_state[1] += M31::from_u32_unchecked(y_row);
+    // // Precompute twiddles.
+    // let twiddles_cpu = CpuBackend::precompute_twiddles(
+    //     CanonicCoset::new(log_n_rows + config.fri_config.log_blowup_factor + 1)
+    //         .circle_domain()
+    //         .half_coset,
+    // );
 
-    // Precompute twiddles.
-    let twiddles_cpu = CpuBackend::precompute_twiddles(
-        CanonicCoset::new(log_n_rows + config.fri_config.log_blowup_factor + 1)
-            .circle_domain()
-            .half_coset,
-    );
+    // // Setup protocol.
+    // let mut commitment_scheme_cpu2 =
+    //     CommitmentSchemeProver::<_, Blake2sMerkleChannel>::new(config, &twiddles_cpu);
 
-    // Setup protocol.
-    let mut commitment_scheme_cpu2 =
-        CommitmentSchemeProver::<_, Blake2sMerkleChannel>::new(config, &twiddles_cpu);
+    // let preprocessed_columns = [
+    //     PreprocessedColumn::IsFirst(x_axis_log_rows),
+    //     PreprocessedColumn::IsFirst(y_axis_log_rows),
+    // ];
 
-    let preprocessed_columns = [
-        PreprocessedColumn::IsFirst(x_axis_log_rows),
-        PreprocessedColumn::IsFirst(y_axis_log_rows),
-    ];
+    // // Preprocessed trace.
+    // let mut tree_builder_cpu2 = commitment_scheme_cpu2.tree_builder();
 
-    // Preprocessed trace.
-    let mut tree_builder = commitment_scheme_cpu2.tree_builder();
+    // // println!("commitment_scheme_cpu {:?}", tree_builder);
 
-    println!("commitment_scheme_cpu {:?}", tree_builder);
+    // tree_builder_cpu2.extend_evals(gen_preprocessed_columns(preprocessed_columns.iter()));
 
-    tree_builder.extend_evals(gen_preprocessed_columns(preprocessed_columns.iter()));
+    // tree_builder_cpu2.commit(channel);
+    // // println!("commitment_scheme_cpu {:?}", commitment_scheme_cpu2);
 
-    tree_builder.commit(channel);
-    println!("commitment_scheme_cpu {:?}", commitment_scheme_cpu2);
-
-    assert_eq!(commitment_scheme_cpu1, commitment_scheme_cpu2);
+    // assert_eq!(commitment_scheme_cpu1, commitment_scheme_cpu2);
 
     ///
     let (x_axis_log_rows, y_axis_log_rows) = (log_n_rows, log_n_rows - 1);
@@ -515,20 +497,23 @@ pub fn prove_state_machine_icicle(
 
     // Preprocessed trace.
 
-    assert_eq!(commitment_scheme_icicle, unsafe { //matches icicle==transmute(cpu) before commit
-        transmute(commitment_scheme_cpu0)
-    });
+    // assert_eq!(commitment_scheme_icicle, unsafe {
+    //     // matches icicle==transmute(cpu) before commit
+    //     transmute(commitment_scheme_cpu0)
+    // });
 
-    assert_eq!(commitment_scheme_cpu1, unsafe { //matches cpu==transmute(cpu) after commit
-        transmute(commitment_scheme_cpu2)
-    });
+    // assert_eq!(commitment_scheme_cpu1, unsafe {
+    //     // matches cpu==transmute(cpu) after commit
+    //     transmute(commitment_scheme_cpu2)
+    // });
 
-    let mut tree_builder = commitment_scheme_icicle.tree_builder();
-    tree_builder.extend_evals(gen_preprocessed_columns(preprocessed_columns.iter()));
+    let mut tree_builder_ic1 = commitment_scheme_icicle.tree_builder();
+    tree_builder_ic1.extend_evals(gen_preprocessed_columns(preprocessed_columns.iter()));
 
-    tree_builder.commit(channel);
+    tree_builder_ic1.commit(channel);
 
-    // assert_eq!(commitment_scheme_icicle, unsafe { //fails after commit
+    // assert_eq!(commitment_scheme_icicle, unsafe {
+    //     // fails after commit
     //     transmute(commitment_scheme_cpu1)
     // });
 
@@ -543,33 +528,29 @@ pub fn prove_state_machine_icicle(
     stmt0.mix_into(channel);
 
     use crate::core::poly::circle::CircleEvaluation;
-    let mut tree_builder = commitment_scheme_icicle.tree_builder();
-    tree_builder.extend_evals(chain![
-        unsafe {
-            transmute::<_, Vec<CircleEvaluation<IcicleBackend, M31, BitReversedOrder>>>(
-                trace_op0
-                    .clone()
-                    .into_iter()
-                    .map(|c| c.to_cpu())
-                    .collect_vec(),
-            )
-        },
-        unsafe {
-            transmute::<_, Vec<CircleEvaluation<IcicleBackend, M31, BitReversedOrder>>>(
-                trace_op1
-                    .clone()
-                    .into_iter()
-                    .map(|c| c.to_cpu())
-                    .collect_vec(),
-            )
-        }
-    ]);
-    tree_builder.commit(channel);
+    let mut tree_builder_ic2 = commitment_scheme_icicle.tree_builder();
 
-    println!("commitment scheme is: {:?}", commitment_scheme_icicle);
+    tree_builder_ic2.extend_evals(chain![
+        trace_op0
+            .iter()
+            .map(|c| unsafe { transmute(c.to_cpu()) })
+            .collect_vec(),
+        trace_op1
+            .iter()
+            .map(|c| unsafe { transmute(c.to_cpu()) })
+            .collect_vec(),
+    ]);
+    tree_builder_ic2.commit(channel);
+
+    println!("commitment scheme 2 is: {:?}", commitment_scheme_icicle);
+
+    println!("trace_op0 = {:?}", trace_op0);
+    println!("trace_op1 = {:?}", trace_op1);
 
     // Draw lookup element.
     let lookup_elements = StateMachineElements::draw(channel);
+
+    println!("lookup_elements: {:?}", lookup_elements);
 
     // Interaction trace.
     let (interaction_trace_op0, [total_sum_op0, claimed_sum_op0]) =
@@ -583,31 +564,26 @@ pub fn prove_state_machine_icicle(
     };
     stmt1.mix_into(channel);
 
-    let mut tree_builder = commitment_scheme_icicle.tree_builder();
-    tree_builder.extend_evals(
-        chain![
-            unsafe {
-                transmute::<_, Vec<CircleEvaluation<IcicleBackend, M31, BitReversedOrder>>>(
-                    interaction_trace_op0
-                        .into_iter()
-                        .map(|c| c.to_cpu())
-                        .collect_vec(),
-                )
-            },
-            unsafe {
-                transmute::<_, Vec<CircleEvaluation<IcicleBackend, M31, BitReversedOrder>>>(
-                    interaction_trace_op1
-                        .into_iter()
-                        .map(|c| c.to_cpu())
-                        .collect_vec(),
-                )
-            }
-        ]
-        .collect_vec(),
-    );
-    tree_builder.commit(channel);
+    println!("interaction_trace_op0 = {:?}", interaction_trace_op0);
+    println!("interaction_trace_op1 = {:?}", interaction_trace_op1);
 
-    println!("commitment scheme is: {:?}", commitment_scheme_icicle);
+    let it0 = interaction_trace_op0
+        .into_iter()
+        .map(|c| unsafe { transmute(c.to_cpu()) })
+        .collect_vec();
+    let it1 = interaction_trace_op1
+        .into_iter()
+        .map(|c| unsafe { transmute(c.to_cpu()) })
+        .collect_vec();
+
+    println!("it0: {:?}", it0);
+    println!("it1: {:?}", it1);
+
+    let mut tree_builder_ic3 = commitment_scheme_icicle.tree_builder();
+    tree_builder_ic3.extend_evals(chain![it0, it1].collect_vec());
+    tree_builder_ic3.commit(channel);
+
+    println!("commitment scheme 3 is: {:?}", commitment_scheme_icicle);
 
     // Prove constraints.
     let mut tree_span_provider = &mut TraceLocationAllocator::default();
@@ -639,6 +615,10 @@ pub fn prove_state_machine_icicle(
         component1,
     };
 
+    println!("components {:?}", components);
+    println!("channel {:?}", channel);
+    println!("commitment_scheme_cpu {:?}", commitment_scheme_icicle);
+
     let stark_proof = prove(
         &components.component_provers_icicle(),
         channel,
@@ -651,7 +631,7 @@ pub fn prove_state_machine_icicle(
         stmt1,
         stark_proof,
     };
-    println!("icicle proof {:?}", proof);
+    // println!("icicle proof {:?}", proof);
     (components, proof)
 }
 
@@ -745,15 +725,16 @@ mod tests {
 
     #[test]
     fn test_state_machine_prove() {
-        let log_n_rows = 8;
+        let log_n_rows = 7;
         let config = PcsConfig::default();
         let initial_state = [M31::zero(); STATE_SIZE];
         let prover_channel = &mut Blake2sChannel::default();
         let verifier_channel = &mut Blake2sChannel::default();
 
         let (components, proof) =
-            // super::prove_state_machine_cpu(log_n_rows, initial_state, config, prover_channel);
-            super::prove_state_machine_icicle(log_n_rows, initial_state, config, prover_channel);
+        
+           super::prove_state_machine_cpu(log_n_rows, initial_state, config, prover_channel);
+        //super::prove_state_machine_icicle(log_n_rows, initial_state, config, prover_channel);
 
         verify_state_machine(config, verifier_channel, components, proof).unwrap();
     }

@@ -155,7 +155,7 @@ impl AccumulationOps for IcicleBackend {
 
 // stwo/crates/prover/src/core/backend/cpu/blake2s.rs
 impl MerkleOps<Blake2sMerkleHasher> for IcicleBackend {
-    const COMMIT_IMPLEMENTED: bool = true;
+    const COMMIT_IMPLEMENTED: bool = false;
 
     fn commit_columns(
         columns: Vec<&Col<Self, BaseField>>,
@@ -248,7 +248,7 @@ impl PolyOps for IcicleBackend {
         eval: CircleEvaluation<Self, BaseField, BitReversedOrder>,
         itwiddles: &TwiddleTree<Self>,
     ) -> CirclePoly<Self> {
-        if eval.domain.log_size() <= 3 || eval.domain.log_size() == 7 {
+        if true || eval.domain.log_size() <= 3 || eval.domain.log_size() == 7 {
             // TODO: as property .is_dcct_available etc...
             return unsafe {
                 transmute(CpuBackend::interpolate(
@@ -294,7 +294,7 @@ impl PolyOps for IcicleBackend {
         domain: CircleDomain,
         twiddles: &TwiddleTree<Self>,
     ) -> CircleEvaluation<Self, BaseField, BitReversedOrder> {
-        if domain.log_size() <= 3 || domain.log_size() == 7 {
+        if true || domain.log_size() <= 3 || domain.log_size() == 7 {
             return unsafe {
                 transmute(CpuBackend::evaluate(
                     transmute(poly),
@@ -334,7 +334,7 @@ impl PolyOps for IcicleBackend {
         columns: impl IntoIterator<Item = CircleEvaluation<Self, BaseField, BitReversedOrder>>,
         twiddles: &TwiddleTree<Self>,
     ) -> Vec<CirclePoly<Self>> {
-        //TODO: it's variable size batch after all :(
+        // TODO: it's variable size batch after all :(
         columns
             .into_iter()
             .map(|eval| eval.interpolate_with_twiddles(twiddles))
@@ -384,7 +384,7 @@ impl PolyOps for IcicleBackend {
         log_blowup_factor: u32,
         twiddles: &TwiddleTree<Self>,
     ) -> Vec<CircleEvaluation<Self, BaseField, BitReversedOrder>> {
-        //TODO: it's variable size batch after all :(
+        // TODO: it's variable size batch after all :(
         polynomials
             .iter()
             .map(|poly| {
@@ -617,49 +617,58 @@ impl QuotientOps for IcicleBackend {
         sample_batches: &[ColumnSampleBatch],
         log_blowup_factor: u32,
     ) -> SecureEvaluation<Self, BitReversedOrder> {
-        let icicle_columns_raw = columns
-            .iter()
-            .flat_map(|x| x.iter().map(|&y| unsafe { transmute(y) }))
-            .collect_vec();
-        let icicle_columns = HostSlice::from_slice(&icicle_columns_raw);
-        let icicle_sample_batches = sample_batches
-            .into_iter()
-            .map(|sample| {
-                let (columns, values) = sample
-                    .columns_and_values
-                    .iter()
-                    .map(|(index, value)| {
-                        ((*index) as u32, unsafe {
-                            transmute::<QM31, QuarticExtensionField>(*value)
-                        })
-                    })
-                    .unzip();
-
-                quotient::ColumnSampleBatch {
-                    point: unsafe { transmute(sample.point) },
-                    columns,
-                    values,
-                }
-            })
-            .collect_vec();
-        let mut icicle_result_raw = vec![QuarticExtensionField::zero(); domain.size()];
-        let icicle_result = HostSlice::from_mut_slice(icicle_result_raw.as_mut_slice());
-        let cfg = quotient::QuotientConfig::default();
-
-        quotient::accumulate_quotients_wrapped(
-            domain.half_coset.initial_index.0 as u32,
-            domain.half_coset.step_size.0 as u32,
-            domain.log_size() as u32,
-            icicle_columns,
-            unsafe { transmute(random_coeff) },
-            &icicle_sample_batches,
-            icicle_result,
-            &cfg,
-        );
+        unsafe {
+            transmute(CpuBackend::accumulate_quotients(
+                domain,
+                unsafe { transmute(columns) },
+                random_coeff,
+                sample_batches,
+                log_blowup_factor,
+            ))
+        }
+        // let icicle_columns_raw = columns
+        // .iter()
+        // .flat_map(|x| x.iter().map(|&y| unsafe { transmute(y) }))
+        // .collect_vec();
+        // let icicle_columns = HostSlice::from_slice(&icicle_columns_raw);
+        // let icicle_sample_batches = sample_batches
+        // .into_iter()
+        // .map(|sample| {
+        // let (columns, values) = sample
+        // .columns_and_values
+        // .iter()
+        // .map(|(index, value)| {
+        // ((*index) as u32, unsafe {
+        // transmute::<QM31, QuarticExtensionField>(*value)
+        // })
+        // })
+        // .unzip();
+        //
+        // quotient::ColumnSampleBatch {
+        // point: unsafe { transmute(sample.point) },
+        // columns,
+        // values,
+        // }
+        // })
+        // .collect_vec();
+        // let mut icicle_result_raw = vec![QuarticExtensionField::zero(); domain.size()];
+        // let icicle_result = HostSlice::from_mut_slice(icicle_result_raw.as_mut_slice());
+        // let cfg = quotient::QuotientConfig::default();
+        //
+        // quotient::accumulate_quotients_wrapped(
+        // domain.half_coset.initial_index.0 as u32,
+        // domain.half_coset.step_size.0 as u32,
+        // domain.log_size() as u32,
+        // icicle_columns,
+        // unsafe { transmute(random_coeff) },
+        // &icicle_sample_batches,
+        // icicle_result,
+        // &cfg,
+        // );
         // TODO: make it on cuda side
-        let mut result = unsafe { SecureColumnByCoords::uninitialized(domain.size()) };
-        (0..domain.size()).for_each(|i| result.set(i, unsafe { transmute(icicle_result_raw[i]) }));
-        SecureEvaluation::new(domain, result)
+        // let mut result = unsafe { SecureColumnByCoords::uninitialized(domain.size()) };
+        // (0..domain.size()).for_each(|i| result.set(i, unsafe { transmute(icicle_result_raw[i])
+        // })); SecureEvaluation::new(domain, result)
     }
 }
 
