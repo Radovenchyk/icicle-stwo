@@ -617,6 +617,7 @@ impl QuotientOps for IcicleBackend {
         sample_batches: &[ColumnSampleBatch],
         log_blowup_factor: u32,
     ) -> SecureEvaluation<Self, BitReversedOrder> {
+        todo!("our impl fails proove test but passes with cpu stub"); 
         unsafe {
             transmute(CpuBackend::accumulate_quotients(
                 domain,

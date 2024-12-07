@@ -733,8 +733,8 @@ mod tests {
 
         let (components, proof) =
         
-           super::prove_state_machine_cpu(log_n_rows, initial_state, config, prover_channel);
-        //super::prove_state_machine_icicle(log_n_rows, initial_state, config, prover_channel);
+        //super::prove_state_machine_cpu(log_n_rows, initial_state, config, prover_channel);
+        super::prove_state_machine_icicle(log_n_rows, initial_state, config, prover_channel);
 
         verify_state_machine(config, verifier_channel, components, proof).unwrap();
     }
